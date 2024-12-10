@@ -1,11 +1,11 @@
 Ts = 1/10;
 car = Car(Ts);
 
-Tf = 2.0;        % Simulation end time
+Tf = 20.0;        % Simulation end time
 
-x0 = [0, 0, deg2rad(-2), 20/3.6]';
+x0 = [0, 0, deg2rad(0), 20/3.6]';
 
-u = [deg2rad(-1), 0.7]';
+u = [deg2rad(0), 1]';
 
 params  = {};     % setup simulation parameter struct
 
