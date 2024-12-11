@@ -46,29 +46,48 @@ classdef MpcControl_lon < MpcControlBase
             obj = 0;
             con = [];
             
+            x = sdpvar(1, N);
+            u = sdpvar(1, N);
+
+            Q = eye(1);
+            R = eye(1);
+            
+            P = eye(1);
+            S = eye(1);
+
+            % Input constraits
+            umin = -1;
+            umax =  1;
+
+            Ab = mpc.A(2,2);
+
+            Bb = mpc.B;
+
+            x_ref = V_ref;
             %% Set up the MPC cost and constraints using the computed set-point
-            constraints = [];
-            objective   = 0;
-            x = x_hist(:,i);
-            for k = 1:N
-                x = A*x + B*u{k};
-                objective   = objective + (x-xs)'*Q*(x-xs) + (u{k}-us)'*R*(u{k}-us);
-                constraints = [constraints, umin <= u{k}<= umax];
+            
+            %x = x_hist(:,i);
+            for k = 1:N-1
+                obj = obj + ((x(1,k)-x_ref)'*Q*(x(1,k)-x_ref));
+                obj = obj + ((u(1,k)-u_ref)'*R*(u(1,k)-u_ref));
+                con = con + (x(:,k+1) == Ab*x(:,k) + Bb*u(:,k));
+                con = con + (umin <= u(1,k)<= umax);
             end
-            objective = objective + (x-xs)'*P*(x-xs)+ (u-us)'*S*(u-us);
+            obj = obj + ((x(1,N)-x_ref)'*P*(x(1,N)-x_ref)) + ((u(1,N)-u_ref)'*S*(u(1,N)-u_ref));
+            con = con + (umin <= u(1,N)<= umax);
             % Replace this line and set u0 to be the input that you
             % want applied to the system. Note that u0 is applied directly
             % to the nonlinear system. You need to take care of any 
             % offsets resulting from the linearization.
             % If you want to use the delta formulation make sure to
             % substract mpc.xs/mpc.us accordingly.
-            con = con + ( u0 == 0 );
+            %con = con + ( u0 == 0 );
 
             % Pass here YALMIP sdpvars which you want to debug. You can
             % then access them when calling your mpc controller like
             % [u, X, U] = mpc_lon.get_u(x0, ref);
             % with debugVars = {X_var, U_var};
-            debugVars = {};
+            debugVars = {x, u};
             
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -100,8 +119,8 @@ classdef MpcControl_lon < MpcControlBase
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
-            Vs_ref = 0;
-            us_ref = 0;
+            Vs_ref = A*xs+B*us;
+            us_ref = setup_controller(mpc);
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
