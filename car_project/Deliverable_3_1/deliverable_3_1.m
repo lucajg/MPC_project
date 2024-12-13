@@ -4,35 +4,20 @@ car = Car(Ts);
 sys = car.linearize(xs, us);
 [sys_lon, sys_lat] = car.decompose(sys);
 % Design MPC controller
-H_lon = 30; % Horizon length in seconds
+H_lon = 10; % Horizon length in seconds
+H_lat = 10;
+
 mpc_lon = MpcControl_lon(sys_lon, Ts, H_lon);
-% Get control input for longitudinal subsystem
-%u_lon = mpc_lon.get_u(x_lon, ref_lon);
-
-%%% In your test script:
-x_lon = [0; 80/3.6] ;
-ref_lon = 120/3.6;
-[u_lon, X_lon, U_lon] = mpc_lon.get_u(x_lon,ref_lon);
-
-t = 0:Ts:H_lon;
-t_inputs = t(1:end-1);  % if U_lon has one fewer element than X_lon
-
-figure(1); clf;
-
-% Plot U on the first subplot
-subplot(2,1,1);
-plot(t_inputs, U_lon(:), 'LineWidth', 1.5);
-grid on;
-xlabel('Time [s]');
-ylabel('Input (U) [-]');
-
-% Plot X on the second subplot (for example, the second state)
-subplot(2,1,2);
-plot(t, X_lon(2,:), 'LineWidth', 1.5);
-grid on;
-xlabel('Time [s]');
-ylabel('State (X_2) [m/s]');
-
-sgtitle('U and X Over Time');
-% Plot and debug X lon and U lon accordingly
-%%%
+mpc_lat = MpcControl_lat(sys_lat, Ts, H_lon);
+mpc = car.merge_lin_controllers(mpc_lon, mpc_lat);
+x0 = [0 0 0 80/3.6]'; % (x, y, theta, V)
+ref1 = [0 80/3.6]'; % (y ref, V ref)
+ref2 = [3 120/3.6]'; % (y ref, V ref)
+params = {};
+params.Tf = 15;
+params.myCar.model = car;
+params.myCar.x0 = x0;
+params.myCar.u = @mpc.get_u;
+params.myCar.ref = car.ref_step(ref1, ref2, 5); % delay reference step by 5s
+result = simulate(params);
+visualization(car, result);

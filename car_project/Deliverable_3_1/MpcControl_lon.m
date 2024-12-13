@@ -46,22 +46,17 @@ classdef MpcControl_lon < MpcControlBase
             obj = 0;
             con = [];
 
-            % X = sdpvar(1, N);
-            % U = sdpvar(1, N);
-
             % Decision variables over the horizon
             X = sdpvar(nx, N);
             U = sdpvar(nu, N-1);
 
-            % Q = eye(1);
-            % R = eye(1);
             % Weights for the cost function
-            % Assume we primarily care about velocity tracking and input usage
-            Q = diag([0, 1]);     % penalize deviation in velocity state (x(2))
-            R = 0.1;             % penalize input deviation from reference
+            % Assume we only care about velocity tracking and input usage
+            Q = diag([0, 1]);     % penalize deviation in velocity state only (x(2))
+            R = 1;  %0.25           % penalize input deviation from reference
             
-            % P = eye(1);
-            % S = eye(1);
+            [K, Qf, ~] = dlqr(mpc.A(2,2),mpc.B(2,1),Q(2,2),R);
+            K = -K;
 
             % Linearization points
             xs = mpc.xs;
@@ -70,59 +65,43 @@ classdef MpcControl_lon < MpcControlBase
             % Input constraits
             umin = -1;
             umax =  1;
-
-            Ab = mpc.A(2,2);
-            Bb = mpc.B(2,1);
-            
            
-
             %% Set up the MPC cost and constraints using the computed set-point
             
             % Initial condition
-            con = [con, X(:,1) == x0];
+            con = con + (X(:,1) == x0);
 
-            %x = x_hist(:,i);
-            % for k = 1:N-1
-            %     obj = obj + ((X(:,k)-V_ref)'*Q*(X(:,k)-V_ref));
-            %     obj = obj + ((U(:,k)-u_ref)'*R*(U(:,k)-u_ref));
-            %     con = con + (X(:,k+1) == Ab*X(:,k) + Bb*U(:,k));
-            %     con = con + (umin <= U(:,k) <= umax);
-            % end
-            % obj = obj + ((X(:,N)-V_ref)'*P*(X(:,N)-V_ref)) + ((U(:,N)-u_ref)'*S*(U(:,N)-u_ref));
-            % con = con + (umin <= U(:,N)<= umax);
-            %con = con + (X(:,1) == x0);
-            
             % Build the prediction model over the horizon
             for k = 1:N-1
                 % Dynamics
-                con = [con, X(:,k+1) == mpc.A*X(:,k) + mpc.B*U(:,k) + ...
-                               (mpc.f_xs_us - mpc.A*xs - mpc.B*us) ]; 
+                con = con + (X(:,k+1) == mpc.A*X(:,k) + mpc.B*U(:,k) + ...
+                               (mpc.f_xs_us - mpc.A*xs - mpc.B*us)); 
                 
                 % Cost accumulation: 
                 % Track velocity (X(2,k)) to V_ref and input U(k) to u_ref
-                x_err = X(:,k) - [xs(1); V_ref];  % Error in state (only velocity matters)
+                x_err = X(:,k) - [xs(1); V_ref];  % Error in state
                 u_err = U(:,k) - u_ref;           % Error in input
                 obj = obj + x_err'*Q*x_err + u_err'*R*u_err;
             end
             
+            % P22 = dlyap(mpc.A(2,2),Q(2,2));
+            % P = diag([0, P22]);
             % Terminal cost
             x_err_terminal = X(:,N) - [xs(1); V_ref];
-            obj = obj + x_err_terminal'*Q*x_err_terminal;
+            obj = obj + x_err_terminal'*diag([0,Qf])*x_err_terminal;
 
             % input constraints
-            con = [con, umin <= U <= umax];
+            con = con + (umin <= U <= umax);
+            % note: there are no constraints on the state for this
+            % subsystem
             
-            % The first input to be applied
-            u0 = U(:,1);
-            
-
             % Replace this line and set u0 to be the input that you
             % want applied to the system. Note that u0 is applied directly
             % to the nonlinear system. You need to take care of any 
             % offsets resulting from the linearization.
             % If you want to use the delta formulation make sure to
             % substract mpc.xs/mpc.us accordingly.
-            %con = con + ( u0 == 0 );
+            con = con + (u0 == U(:,1));
 
             % Pass here YALMIP sdpvars which you want to debug. You can
             % then access them when calling your mpc controller like

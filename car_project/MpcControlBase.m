@@ -38,12 +38,12 @@ classdef MpcControlBase
                     d_est = 0;
                 end
                 % Compute steady state target
-                [ref_x, ref_u] = mpc.compute_steady_state_target(ref, d_est)
+                [ref_x, ref_u] = mpc.compute_steady_state_target(ref, d_est);
                 % Compute the control action
                 [sol, solve_status] = mpc.ctrl_opti({x(1:nx), ref_x, ref_u, d_est, xOther});
             else
                 % Compute steady state target
-                [ref_x, ref_u] = mpc.compute_steady_state_target(ref)
+                [ref_x, ref_u] = mpc.compute_steady_state_target(ref);
                 % Compute the control action
                 [sol, solve_status] = mpc.ctrl_opti({x, ref_x, ref_u, xOther});
             end
