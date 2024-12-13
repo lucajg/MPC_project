@@ -45,36 +45,77 @@ classdef MpcControl_lon < MpcControlBase
             % SET THE PROBLEM CONSTRAINTS con AND THE OBJECTIVE obj HERE
             obj = 0;
             con = [];
-            
-            x = sdpvar(1, N);
-            u = sdpvar(1, N);
 
-            Q = eye(1);
-            R = eye(1);
+            % X = sdpvar(1, N);
+            % U = sdpvar(1, N);
+
+            % Decision variables over the horizon
+            X = sdpvar(nx, N);
+            U = sdpvar(nu, N-1);
+
+            % Q = eye(1);
+            % R = eye(1);
+            % Weights for the cost function
+            % Assume we primarily care about velocity tracking and input usage
+            Q = diag([0, 1]);     % penalize deviation in velocity state (x(2))
+            R = 0.1;             % penalize input deviation from reference
             
-            P = eye(1);
-            S = eye(1);
+            % P = eye(1);
+            % S = eye(1);
+
+            % Linearization points
+            xs = mpc.xs;
+            us = mpc.us;
 
             % Input constraits
             umin = -1;
             umax =  1;
 
             Ab = mpc.A(2,2);
+            Bb = mpc.B(2,1);
+            
+           
 
-            Bb = mpc.B;
-
-            x_ref = V_ref;
             %% Set up the MPC cost and constraints using the computed set-point
             
+            % Initial condition
+            con = [con, X(:,1) == x0];
+
             %x = x_hist(:,i);
+            % for k = 1:N-1
+            %     obj = obj + ((X(:,k)-V_ref)'*Q*(X(:,k)-V_ref));
+            %     obj = obj + ((U(:,k)-u_ref)'*R*(U(:,k)-u_ref));
+            %     con = con + (X(:,k+1) == Ab*X(:,k) + Bb*U(:,k));
+            %     con = con + (umin <= U(:,k) <= umax);
+            % end
+            % obj = obj + ((X(:,N)-V_ref)'*P*(X(:,N)-V_ref)) + ((U(:,N)-u_ref)'*S*(U(:,N)-u_ref));
+            % con = con + (umin <= U(:,N)<= umax);
+            %con = con + (X(:,1) == x0);
+            
+            % Build the prediction model over the horizon
             for k = 1:N-1
-                obj = obj + ((x(1,k)-x_ref)'*Q*(x(1,k)-x_ref));
-                obj = obj + ((u(1,k)-u_ref)'*R*(u(1,k)-u_ref));
-                con = con + (x(:,k+1) == Ab*x(:,k) + Bb*u(:,k));
-                con = con + (umin <= u(1,k)<= umax);
+                % Dynamics
+                con = [con, X(:,k+1) == mpc.A*X(:,k) + mpc.B*U(:,k) + ...
+                               (mpc.f_xs_us - mpc.A*xs - mpc.B*us) ]; 
+                
+                % Cost accumulation: 
+                % Track velocity (X(2,k)) to V_ref and input U(k) to u_ref
+                x_err = X(:,k) - [xs(1); V_ref];  % Error in state (only velocity matters)
+                u_err = U(:,k) - u_ref;           % Error in input
+                obj = obj + x_err'*Q*x_err + u_err'*R*u_err;
             end
-            obj = obj + ((x(1,N)-x_ref)'*P*(x(1,N)-x_ref)) + ((u(1,N)-u_ref)'*S*(u(1,N)-u_ref));
-            con = con + (umin <= u(1,N)<= umax);
+            
+            % Terminal cost
+            x_err_terminal = X(:,N) - [xs(1); V_ref];
+            obj = obj + x_err_terminal'*Q*x_err_terminal;
+
+            % input constraints
+            con = [con, umin <= U <= umax];
+            
+            % The first input to be applied
+            u0 = U(:,1);
+            
+
             % Replace this line and set u0 to be the input that you
             % want applied to the system. Note that u0 is applied directly
             % to the nonlinear system. You need to take care of any 
@@ -87,7 +128,7 @@ classdef MpcControl_lon < MpcControlBase
             % then access them when calling your mpc controller like
             % [u, X, U] = mpc_lon.get_u(x0, ref);
             % with debugVars = {X_var, U_var};
-            debugVars = {x, u};
+            debugVars = {X, U};
             
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -119,8 +160,18 @@ classdef MpcControl_lon < MpcControlBase
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
-            Vs_ref = A*xs+B*us;
-            us_ref = setup_controller(mpc);
+            
+            % We want to find us_ref such that V = ref is an equilibrium:
+            %
+            % At steady state: Vs_ref = A(Vs_ref - xs) + B(us_ref - us) + xs
+            %
+            % Rearrange:
+            % Vs_ref - xs = A(Vs_ref - xs) + B(us_ref - us)
+            % (I - A)(Vs_ref - xs) = B(us_ref - us)
+            % us_ref = us + ( (1 - A)/B )*( Vs_ref - xs )
+            
+            Vs_ref = ref;
+            us_ref = us + ((1 - A)/B)*(Vs_ref - xs);
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
