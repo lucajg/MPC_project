@@ -4,8 +4,8 @@ car = Car(Ts);
 sys = car.linearize(xs, us);
 [sys_lon, sys_lat] = car.decompose(sys);
 % Design MPC controller
-H_lon = 12; % Horizon length in seconds
-H_lat = 12;
+H_lon = 30; % Horizon length in seconds
+H_lat = 30;
 mpc_lon = MpcControl_lon(sys_lon, Ts, H_lon);
 mpc_lat = MpcControl_lat(sys_lat, Ts, H_lat);
 % Get control input for longitudinal subsystem
@@ -15,6 +15,8 @@ mpc_lat = MpcControl_lat(sys_lat, Ts, H_lat);
 x_lon = [0; 80/3.6];
 ref_lon = 120/3.6;
 [u_lon, X_lon, U_lon] = mpc_lon.get_u(x_lon,ref_lon);
+
+X_lon(2,end)*3.6
 
 x_lat = [0; 0];
 ref_lat = 3;

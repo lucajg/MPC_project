@@ -6,18 +6,21 @@ sys = car.linearize(xs, us);
 % Design MPC controller
 H_lon = 10; % Horizon length in seconds
 H_lat = 10;
-
 mpc_lon = MpcControl_lon(sys_lon, Ts, H_lon);
 mpc_lat = MpcControl_lat(sys_lat, Ts, H_lon);
 mpc = car.merge_lin_controllers(mpc_lon, mpc_lat);
+
+estimator = LonEstimator(sys_lon, Ts)
 x0 = [0 0 0 80/3.6]'; % (x, y, theta, V)
 ref1 = [0 80/3.6]'; % (y ref, V ref)
-ref2 = [3 140/3.6]'; % (y ref, V ref)
+ref2 = [3 120/3.6]'; % (y ref, V ref)
 params = {};
 params.Tf = 15;
 params.myCar.model = car;
 params.myCar.x0 = x0;
+params.myCar.est_fcn = @estimator.estimate;
+params.myCar.est_dist0 = 0;
 params.myCar.u = @mpc.get_u;
-params.myCar.ref = car.ref_step(ref1, ref2, 5); % delay reference step by 5s
+params.myCar.ref = car.ref_step(ref1, ref2, 2); % delay reference step by 2s;
 result = simulate(params);
 visualization(car, result);
