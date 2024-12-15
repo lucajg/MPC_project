@@ -10,7 +10,8 @@ mpc_lon = MpcControl_lon(sys_lon, Ts, H_lon);
 mpc_lat = MpcControl_lat(sys_lat, Ts, H_lon);
 mpc = car.merge_lin_controllers(mpc_lon, mpc_lat);
 
-estimator = LonEstimator(sys_lon, Ts)
+estimator = LonEstimator(sys_lon, Ts);
+
 x0 = [0 0 0 80/3.6]'; % (x, y, theta, V)
 ref1 = [0 80/3.6]'; % (y ref, V ref)
 ref2 = [3 120/3.6]'; % (y ref, V ref)

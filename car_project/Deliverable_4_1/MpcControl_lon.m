@@ -151,7 +151,7 @@ classdef MpcControl_lon < MpcControlBase
             % us_ref = us + ( (1 - A)/B )*( Vs_ref - xs )
             
             Vs_ref = ref;
-            us_ref = us + ((1 - A)/B*(Vs_ref - xs)) - d_est;
+            us_ref = us + (1 - A)*(Vs_ref - xs)/B - d_est;
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
