@@ -14,7 +14,7 @@ classdef MpcControl_lon < MpcControlBase
             % OUTPUTS
             %   u0           - input to apply to the system
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            
+           
             N_segs = ceil(mpc.H/mpc.Ts); % Horizon steps
             N = N_segs + 1;              % Last index in 1-based Matlab indexing
 
@@ -48,7 +48,7 @@ classdef MpcControl_lon < MpcControlBase
 
             % Decision variables over the horizon
             X = sdpvar(nx, N);
-            U = sdpvar(nu, N-1);
+            U = sdpvar(nu, N);
 
             % Weights for the cost function
             % Assume we only care about velocity tracking and input usage
@@ -74,9 +74,8 @@ classdef MpcControl_lon < MpcControlBase
             % Build the prediction model over the horizon
             for k = 1:N-1
                 % Dynamics
-                con = con + (X(:,k+1) == mpc.A*X(:,k) + mpc.B*U(:,k) + ...
-                               (mpc.f_xs_us - mpc.A*xs - mpc.B*us) + ...
-                               mpc.B*d_est); 
+                con = con + (X(:,k+1) == mpc.f_xs_us + mpc.A*(X(:,k)-xs) + ...
+                                         mpc.B*(U(:,k)-us) + mpc.B*d_est); 
                 
                 % Cost accumulation: 
                 % Track velocity (X(2,k)) to V_ref and input U(k) to u_ref
@@ -89,8 +88,9 @@ classdef MpcControl_lon < MpcControlBase
             % P = diag([0, P22]);
             % Terminal cost
             x_err_terminal = X(:,N) - [xs(1); V_ref];
+            
             obj = obj + x_err_terminal'*diag([0,Qf])*x_err_terminal;
-
+            
             % input constraints
             con = con + (umin <= U <= umax);
             % note: there are no constraints on the state for this
@@ -140,18 +140,10 @@ classdef MpcControl_lon < MpcControlBase
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
-            
-            % We want to find us_ref such that V = ref is an equilibrium:
-            %
-            % At steady state: Vs_ref = A(Vs_ref - xs) + B(us_ref - us) + xs
-            %
-            % Rearrange:
-            % Vs_ref - xs = A(Vs_ref - xs) + B(us_ref - us)
-            % (I - A)(Vs_ref - xs) = B(us_ref - us)
-            % us_ref = us + ( (1 - A)/B )*( Vs_ref - xs )
-            
+
             Vs_ref = ref;
             us_ref = us + (1 - A)*(Vs_ref - xs)/B - d_est;
+
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
