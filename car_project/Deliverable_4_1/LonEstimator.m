@@ -19,6 +19,10 @@ classdef LonEstimator
             
             % Discretize the system and extract the A,B,C,D matrices
             [~, Ad, Bd, Cd, ~] = Car.c2d_with_offset(sys, Ts);
+
+            Ad
+
+            Bd
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE

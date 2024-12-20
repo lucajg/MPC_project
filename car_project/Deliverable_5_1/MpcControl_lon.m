@@ -14,7 +14,7 @@ classdef MpcControl_lon < MpcControlBase
             % OUTPUTS
             %   u0           - input to apply to the system
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-           
+            
             N_segs = ceil(mpc.H/mpc.Ts); % Horizon steps
             N = N_segs + 1;              % Last index in 1-based Matlab indexing
 
@@ -41,60 +41,55 @@ classdef MpcControl_lon < MpcControlBase
             %       are the DISCRETE-TIME MODEL of your system.
             %       You can find the linearization steady-state
             %       in mpc.xs and mpc.us.
-            
-            % SET THE PROBLEM CONSTRAINTS con AND THE OBJECTIVE obj HERE
+
             obj = 0;
             con = [];
 
-            % Decision variables over the horizon
-            X = sdpvar(nx, N);
-            U = sdpvar(nu, N);
-
-            % Weights for the cost function
-            % Assume we only care about velocity tracking and input usage
-            Q = diag([0, 1]);     % penalize deviation in velocity state only (x(2))
-            R = 1;  %0.25           % penalize input deviation from reference
+            load('tube_mpc_data.mat', 'Ff', 'ff', 'x_safe_pos', 'K', 'P', 'polyU_tilde', 'polyX_tilde', 'E')
             
-            [K, Qf, ~] = dlqr(mpc.A(2,2),mpc.B(2,1),Q(2,2),R);
-            K = -K;
+            x_safe = [x_safe_pos; 0];
+            %Delta0 = sdpvar(nx,1);
+            Delta0 = x0other - x0 - x_safe;
 
-            % Linearization points
+            DELTAZ = sdpvar(nx,N);
+
+            U_T = sdpvar(1,N);
+
+            Q = eye(2);
+            R = eye(1);
+
             xs = mpc.xs;
             us = mpc.us;
 
-            % Input constraits
             umin = -1;
             umax =  1;
-           
-            %% Set up the MPC cost and constraints using the computed set-point
-            
-            % Initial condition
-            con = con + (X(:,1) == x0);
 
-            % Build the prediction model over the horizon
+            % SET THE PROBLEM CONSTRAINTS con AND THE OBJECTIVE obj HERE
+            
+            %con = con + (DELTAZ(:,1) == Delta0);
+            FXt = polyX_tilde.A;
+            fXt = polyX_tilde.b;
+            FUt = polyU_tilde.A;
+            fUt = polyU_tilde.b;
+            con = con + (DELTAZ(:,1) == Delta0);
             for k = 1:N-1
                 % Dynamics
-                con = con + (X(:,k+1) == mpc.f_xs_us + mpc.A*(X(:,k)-xs) + ...
-                                         mpc.B*(U(:,k)-us) + mpc.B*d_est); 
                 
+                con = con + (DELTAZ(:,k+1) == mpc.A*DELTAZ(:,k) - mpc.B*U_T(:,k)); 
+                
+                con = con + (FXt*DELTAZ(:,k) <= fXt);
+                con = con + (FUt*U_T(:,k) <= fUt);
+                
+                %con = con + (umin <= K*(Delta0 - DELTAZ(:,k)) + U_T(:,k) <= umax);
                 % Cost accumulation: 
                 % Track velocity (X(2,k)) to V_ref and input U(k) to u_ref
-                x_err = X(:,k) - [xs(1); V_ref];  % Error in state
-                u_err = U(:,k) - u_ref;% - d_est;           % Error in input
-                obj = obj + x_err'*Q*x_err + u_err'*R*u_err;
+                u_err = U_T(:,k) - u_ref;           % Error in input
+                obj = obj + DELTAZ(:,k)'*Q*DELTAZ(:,k) + u_err'*R*u_err;
             end
-            
-            P22 = dlyap(mpc.A(2,2),Q(2,2));
-            P = diag([0, P22]);
-            % Terminal cost
-            x_err_terminal = X(:,N) - [xs(1); V_ref];
-            
-            obj = obj + x_err_terminal'*P*x_err_terminal; %diag([0,Qf])
-            
-            % input constraints
-            con = con + (umin <= U <= umax);
-            % note: there are no constraints on the state for this
-            % subsystem
+               obj = obj + DELTAZ(:,N)'*P*DELTAZ(:,N);
+            %U_T(:,1)
+
+            con = con + (Ff*DELTAZ(:,N) <= ff);
             
             % Replace this line and set u0 to be the input that you
             % want applied to the system. Note that u0 is applied directly
@@ -102,13 +97,14 @@ classdef MpcControl_lon < MpcControlBase
             % offsets resulting from the linearization.
             % If you want to use the delta formulation make sure to
             % substract mpc.xs/mpc.us accordingly.
-            con = con + (u0 == U(:,1));
+            %con = con + (u0 == K*(Delta0 - DELTAZ(:,1)) + U_T(:,1));
+            con = con + (u0 == U_T(:,1));
 
             % Pass here YALMIP sdpvars which you want to debug. You can
             % then access them when calling your mpc controller like
             % [u, X, U] = mpc_lon.get_u(x0, ref);
             % with debugVars = {X_var, U_var};
-            debugVars = {X, U};
+            debugVars = {};
             
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -140,10 +136,8 @@ classdef MpcControl_lon < MpcControlBase
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
-
             Vs_ref = ref;
-            us_ref = us + (1 - A)*(Vs_ref - xs)/B - d_est;
-
+            us_ref = us;
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
