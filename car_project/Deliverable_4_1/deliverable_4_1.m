@@ -1,13 +1,16 @@
+
+
 Ts = 1/10; % Sample time
 car = Car(Ts);
 [xs, us] = car.steady_state(120 / 3.6);
+xs
 sys = car.linearize(xs, us);
 [sys_lon, sys_lat] = car.decompose(sys);
 % Design MPC controller
 H_lon = 10; % Horizon length in seconds
 H_lat = 10;
 mpc_lon = MpcControl_lon(sys_lon, Ts, H_lon);
-mpc_lat = MpcControl_lat(sys_lat, Ts, H_lon);
+mpc_lat = MpcControl_lat(sys_lat, Ts, H_lat);
 mpc = car.merge_lin_controllers(mpc_lon, mpc_lat);
 
 estimator = LonEstimator(sys_lon, Ts);

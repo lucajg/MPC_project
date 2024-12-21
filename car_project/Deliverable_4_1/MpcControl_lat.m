@@ -52,23 +52,23 @@ classdef MpcControl_lat < MpcControlBase
             % Assume we primarily care about velocity tracking and input usage
             % Q = diag([0.01,1]) ;   
             % R = 0.01;             
-            Q = diag([0.001385, 1]);   
-            R = 1;  
+            Q = diag([0.001385, 1]);
+            R = 0.1;  
 
             % Linearization points
             xs = mpc.xs;
             us = mpc.us;
-
+       
             % Input constraits
 
             ymin = -0.5;
             ymax =  3.5;
 
-            thetamin = -0.0873;
-            thetamax =  0.0873;
+            thetamin = -deg2rad(5);
+            thetamax =  deg2rad(5);
 
-            deltamin = -0.5236;
-            deltamax =  0.5236;
+            deltamin =  -deg2rad(30);
+            deltamax =   deg2rad(30);
 
             %% Compute maximal invariant set
           
@@ -114,6 +114,8 @@ classdef MpcControl_lat < MpcControlBase
             % Plot
             figure(3);
             hold on;
+            
+            plot(polytope(Fx,fx),'g');
             plot(polytope(Ff,ff),'r');
             title('Maximal invariant set for lateral subsystem');
             scatter([0,3],[0,0]);
@@ -124,36 +126,29 @@ classdef MpcControl_lat < MpcControlBase
             %% Set up the MPC cost and constraints using the computed set-point
             
             % Initial condition
-            con = con + (X(:,1) == x0);
+            con = con + (X(:,1) == x0 - xs);
 
             % Build the prediction model over the horizon
             for k = 1:N-1
                 % Dynamics
-                con = con + (X(:,k+1) == mpc.A*X(:,k) + mpc.B*U(:,k) + ...
-                               (mpc.f_xs_us - mpc.A*xs - mpc.B*us)); 
-                
+                con = con + (X(:,k+1) == mpc.A*X(:,k) + mpc.B*U(:,k));
+                con = con + (Fx*(X(:,k) + xs) <= fx);
+                con = con + (Fu*(U(:,k) + us) <= fu);
                 % Cost accumulation: 
                 % Track position y X(1) to x_ref(1), 
                 % angle theta X(2) to x_ref(2) 
                 % and input U(k) to u_ref
-                x_err = X(:,k) - x_ref;           % Error in state
-                u_err = U(:,k) - u_ref;           % Error in input
+                x_err = X(:,k) - (x_ref-xs);           % Error in state
+                u_err = U(:,k) - (u_ref-us);           % Error in input
                 obj = obj + x_err'*Q*x_err + u_err'*R*u_err;
             end
             
             % Terminal cost
-            x_err_terminal = X(:,N) - x_ref;
+            x_err_terminal = X(:,N) - (x_ref-xs);
             obj = obj + x_err_terminal'*Qf*x_err_terminal;
             
             % terminal constraint
-            con = con + (Ff*X(:,N) <= ff);
-
-            % input constraints
-            con = con + (deltamin <= U <= deltamax);
-
-            % state constraints
-            con = con + (ymin <= X(1,:) <= ymax);
-            con = con + (thetamin <= X(2,:) <= thetamax);
+            con = con + (Ff*(X(:,N) + xs - x_ref) <= ff);
 
             % Replace this line and set u0 to be the input that you
             % want applied to the system. Note that u0 is applied directly
@@ -161,7 +156,7 @@ classdef MpcControl_lat < MpcControlBase
             % offsets resulting from the linearization.
             % If you want to use the delta formulation make sure to
             % substract mpc.xs/mpc.us accordingly.
-            con = con + (u0 == U(:,1)); % set u0 to be the first input
+            con = con + (u0 == U(:,1)+us); % set u0 to be the first input
 
             % Pass here YALMIP sdpvars which you want to debug. You can
             % then access them when calling your mpc controller like
@@ -198,18 +193,22 @@ classdef MpcControl_lat < MpcControlBase
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
-            % xs_ref = ref;
-            % sizeA = (size(A));
-            % n = sizeA(1)
-            % 
-            % us_ref = us + ((eye(n) - A)/B)*(xs_ref - xs);
-
+            
             % The y state has to be equal to the reference and theta must
             % be 0 at steady state
-            xs_ref = [ref; 0];
-
+            C = [1 0];
+            sizeC =  size(C);
+            ny = sizeC(1);
+            sizeB = size(B);
+            nu = sizeB(2);
+            nx = sizeB(1);
+            aug_mat = [eye(size(A))-A,         - B
+                                    C,  zeros(ny,nu)];
+            r = [-A*xs - B*us + xs ; ref];
+            xu = aug_mat\r;
+            xs_ref = [xu(1); xu(2)];
             % we want the input delta to be 0 at steady state
-            us_ref = 0;
+            us_ref = xu(3);
             
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

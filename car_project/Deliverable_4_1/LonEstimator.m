@@ -37,7 +37,7 @@ classdef LonEstimator
                          0      ];
             est.C_hat = [Cd(2,2), 0];
             
-            est.L = -place(est.A_hat',est.C_hat',[0.9,0.8])';
+            est.L = -place(est.A_hat',est.C_hat',[0.5,0.6])';
             
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -60,8 +60,8 @@ classdef LonEstimator
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             
             % Estimation equation
-            z_hat_next = est.A_hat*z_hat + est.B_hat*u + est.L*(est.C_hat*z_hat - y);
-
+            z_hat_next =  est.xs_hat + est.A_hat*(z_hat - est.xs_hat) + est.B_hat*(u - est.us_hat) + est.L*(est.C_hat*(z_hat) - y);
+            
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end

@@ -1,4 +1,4 @@
-classdef NmpcControl < handle
+classdef NmpcControl_overtake < handle
 
     properties
         % The NMPC problem
@@ -29,7 +29,7 @@ classdef NmpcControl < handle
     end
 
     methods
-        function obj = NmpcControl(car, H)
+        function obj = NmpcControl_overtake(car, H)
 
             import casadi.*
             
@@ -58,9 +58,17 @@ classdef NmpcControl < handle
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
 
             % Define your problem using the opti object created above
-            X = opti.variable(nx,N+1); % state trajectory variables
-            U = opti.variable(nu,N);   % control trajectory (throttle, brake)
             
+            X = opti.variable(nx,N+1); % state trajectory variables
+            X_other = opti.variable(nx, N+1);
+            U = opti.variable(nu,N);   % control trajectory (throttle, brake)
+            A = [1 0 0 car.Ts
+                 0 1 0 0
+                 0 0 1 0
+                 0 0 0 1];
+
+            H = [3 0
+                 0 0.8];
             pos_x0 = obj.x0(1);
             pos_y0 = obj.x0(2);
             theta_0 = obj.x0(3) ;  
@@ -83,19 +91,26 @@ classdef NmpcControl < handle
 
             V_err = speed - obj.ref(2)*ones(1,N+1);
             y_err = pos_y - obj.ref(1)*ones(1,N+1);
+            
             cost = 10*(V_err*V_err')  + ... 
                 10*(y_err*y_err') + ... 
-                0.1*(theta*theta')   + ... 
+                1*(theta*theta')   + ... 
                 0.1 * U(1, :)*U(1, :)'; 
             
             
 
             %opti.subject_to(X(:,1)==obj.x0);
+            opti.subject_to(X_other(:,1)==obj.x0other);
+            
+            p = [X(1,:); X(2,:)];
+            pL = [X_other(1,:); X_other(2,:)];
 
             for k=1:N % loop over control intervals
                 opti.subject_to(X(:,k+1) == f_discrete(X(:,k), U(:,k)));
+                opti.subject_to(X_other(:,k+1) == A*X_other(:,k));
+                opti.subject_to(((p(:,k)-pL(:,k))'*H*(p(:,k)-pL(:,k)))>=1);
             end
-
+            
             
 
             opti.subject_to(-1 <= throttle <= 1); 

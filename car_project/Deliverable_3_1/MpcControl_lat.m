@@ -52,7 +52,7 @@ classdef MpcControl_lat < MpcControlBase
             % Assume we primarily care about velocity tracking and input usage
             % Q = diag([0.01,1]) ;   
             % R = 0.01;             
-            Q = diag([0.001385, 1]);   
+            Q = diag([0.01,1]);%diag([0.001385, 1]);   
             R = 1;  
 
             % Linearization points

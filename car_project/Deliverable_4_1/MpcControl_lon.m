@@ -69,30 +69,30 @@ classdef MpcControl_lon < MpcControlBase
             %% Set up the MPC cost and constraints using the computed set-point
             
             % Initial condition
-            con = con + (X(:,1) == x0);
+            con = con + (X(:,1) == x0-xs);
 
             % Build the prediction model over the horizon
             for k = 1:N-1
                 % Dynamics
-                con = con + (X(:,k+1) == mpc.f_xs_us + mpc.A*(X(:,k)-xs) + ...
-                                         mpc.B*(U(:,k)-us) + mpc.B*d_est); 
+                con = con + (X(:,k+1) == mpc.A*(X(:,k)) + ...
+                                         mpc.B*(U(:,k)) + (mpc.B*d_est)); 
                 
                 % Cost accumulation: 
                 % Track velocity (X(2,k)) to V_ref and input U(k) to u_ref
-                x_err = X(:,k) - [xs(1); V_ref];  % Error in state
-                u_err = U(:,k) - u_ref;% - d_est;           % Error in input
+                x_err = X(:,k) - ([xs(1); V_ref] - xs);  % Error in state
+                u_err = U(:,k) - (u_ref-us);% - d_est;           % Error in input
                 obj = obj + x_err'*Q*x_err + u_err'*R*u_err;
             end
             
             P22 = dlyap(mpc.A(2,2),Q(2,2));
             P = diag([0, P22]);
             % Terminal cost
-            x_err_terminal = X(:,N) - [xs(1); V_ref];
+            x_err_terminal = X(:,N) - ([xs(1); V_ref]-xs);
             
             obj = obj + x_err_terminal'*P*x_err_terminal; %diag([0,Qf])
             
             % input constraints
-            con = con + (umin <= U <= umax);
+            con = con + (umin-us <= U <= umax-us);
             % note: there are no constraints on the state for this
             % subsystem
             
@@ -102,7 +102,7 @@ classdef MpcControl_lon < MpcControlBase
             % offsets resulting from the linearization.
             % If you want to use the delta formulation make sure to
             % substract mpc.xs/mpc.us accordingly.
-            con = con + (u0 == U(:,1));
+            con = con + (u0 == U(:,1)+us);
 
             % Pass here YALMIP sdpvars which you want to debug. You can
             % then access them when calling your mpc controller like
@@ -141,8 +141,20 @@ classdef MpcControl_lon < MpcControlBase
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
 
-            Vs_ref = ref;
-            us_ref = us + (1 - A)*(Vs_ref - xs)/B - d_est;
+            C = 1;
+            sizeC =  size(C);
+            ny = sizeC(1);
+            sizeB = size(B);
+            nu = sizeB(2);
+            nx = sizeB(1);
+            aug_mat = [eye(size(A))-A,         - B
+                                    C,  zeros(ny,nu)];
+            r = [-A*xs-B*us+B*d_est+xs; ref];
+            xu = aug_mat\r;
+
+            Vs_ref = xu(1);
+            
+            us_ref = xu(2);
 
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
