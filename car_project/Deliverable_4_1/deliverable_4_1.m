@@ -3,7 +3,6 @@
 Ts = 1/10; % Sample time
 car = Car(Ts);
 [xs, us] = car.steady_state(120 / 3.6);
-xs
 sys = car.linearize(xs, us);
 [sys_lon, sys_lat] = car.decompose(sys);
 % Design MPC controller

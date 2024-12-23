@@ -45,18 +45,16 @@ classdef MpcControl_lon < MpcControlBase
             obj = 0;
             con = [];
 
-            load('tube_mpc_data.mat', 'Ff', 'ff', 'x_safe_pos', 'K', 'P', 'polyU_tilde', 'polyX_tilde', 'E')
-            
+            load('tube_mpc_data.mat', 'Xf', 'x_safe_pos', 'K', 'U_tilde', 'X_tilde', 'E', 'Q', 'R')
+            Ff = Xf.A;
+            ff = Xf.b;
             x_safe = [x_safe_pos; 0];
-            %Delta0 = sdpvar(nx,1);
-            Delta0 = x0other - x0 - x_safe;
+            %DeltaX0 = sdpvar(nx,1);
+            DeltaX0 = x0other - x0 - x_safe;
 
             DELTAZ = sdpvar(nx,N);
 
             U_T = sdpvar(1,N);
-
-            Q = eye(2);
-            R = eye(1);
 
             xs = mpc.xs;
             us = mpc.us;
@@ -66,12 +64,21 @@ classdef MpcControl_lon < MpcControlBase
 
             % SET THE PROBLEM CONSTRAINTS con AND THE OBJECTIVE obj HERE
             
-            %con = con + (DELTAZ(:,1) == Delta0);
-            FXt = polyX_tilde.A;
-            fXt = polyX_tilde.b;
-            FUt = polyU_tilde.A;
-            fUt = polyU_tilde.b;
-            con = con + (DELTAZ(:,1) == Delta0);
+            %con = con + (DELTAZ(:,1) == DeltaX0);
+            FXt = X_tilde.A;
+            fXt = X_tilde.b;
+
+            FUt = U_tilde.A;
+            fUt = U_tilde.b;
+            
+           
+
+            FE = E.A;
+            fe = E.b;
+            % con = con + (DELTAZ(:,1) == DeltaX0);
+            % Minkowski sum constraint: DeltaX0 in DELTAZ(:,1) + E
+            % ==> DeltaX0 - DELTAZ(:,1) in E
+            con = con + (FE * (DeltaX0 - DELTAZ(:,1)) <= fe);
             for k = 1:N-1
                 % Dynamics
                 
@@ -80,14 +87,16 @@ classdef MpcControl_lon < MpcControlBase
                 con = con + (FXt*DELTAZ(:,k) <= fXt);
                 con = con + (FUt*U_T(:,k) <= fUt);
                 
-                %con = con + (umin <= K*(Delta0 - DELTAZ(:,k)) + U_T(:,k) <= umax);
+                %con = con + (umin <= K*(DeltaX0 - DELTAZ(:,k)) + U_T(:,k) <= umax);
+                
                 % Cost accumulation: 
-                % Track velocity (X(2,k)) to V_ref and input U(k) to u_ref
-                u_err = U_T(:,k) - u_ref;           % Error in input
-                obj = obj + DELTAZ(:,k)'*Q*DELTAZ(:,k) + u_err'*R*u_err;
+                
+               % u_err = U_T(:,k) - u_ref;           % Error in input
+                obj = obj + DELTAZ(:,k)'*Q*DELTAZ(:,k) + U_T(:,k)'*R*U_T(:,k);
             end
-               obj = obj + DELTAZ(:,N)'*P*DELTAZ(:,N);
-            %U_T(:,1)
+            Acl = mpc.A-mpc.B*K;
+            P = dlyap(Acl,Q);
+            obj = obj + DELTAZ(:,N)'*P*DELTAZ(:,N);
 
             con = con + (Ff*DELTAZ(:,N) <= ff);
             
@@ -97,8 +106,8 @@ classdef MpcControl_lon < MpcControlBase
             % offsets resulting from the linearization.
             % If you want to use the delta formulation make sure to
             % substract mpc.xs/mpc.us accordingly.
-            %con = con + (u0 == K*(Delta0 - DELTAZ(:,1)) + U_T(:,1));
-            con = con + (u0 == U_T(:,1));
+            %con = con + (u0 == K*(DeltaX0 - DELTAZ(:,1)) + U_T(:,1));
+            con = con + (u0 == K*(DeltaX0 - DELTAZ(:,1)) + U_T(:,1));
 
             % Pass here YALMIP sdpvars which you want to debug. You can
             % then access them when calling your mpc controller like
