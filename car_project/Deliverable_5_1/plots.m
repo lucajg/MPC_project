@@ -11,10 +11,14 @@ title('Initial Polyhedron W');
 
 %% Plot the polyhedron E
 figure;        
+hold on;
 E.plot('color','b','alpha',0.5);
-xlabel('x_1');
-ylabel('x_2');
-title('Final Polyhedron E');
+xlabel('$x$','Interpreter', 'latex');
+ylabel('$V$','Interpreter', 'latex');
+title('Minimal robust positive invariant set $\mathcal{E}$','Interpreter', 'latex');
+plot(0, 0, 'blackx', 'MarkerSize', 7, 'LineWidth', 1); 
+axis square;
+hold off;
 
 %% Plot the polyhedrons X and X_tilde
 figure;
@@ -60,8 +64,12 @@ title('K*E')
 %% Plot Maximal invaritant set Xf
 
 figure;
-Xf.plot('color','r','alpha',0.1);
-title('Maximal invariant set X_f');
-xlabel('x');
-ylabel('V');
+hold on;
+Xf.plot('color','r','alpha',0.3);
+title('Maximal robust positive invariant set $\mathcal{X}_f$','Interpreter', 'latex');
+xlabel('$x$','Interpreter', 'latex');
+ylabel('$V$','Interpreter', 'latex');
 grid on;
+plot(0, 0, 'blackx', 'MarkerSize', 7, 'LineWidth', 1); 
+axis square;
+hold off;

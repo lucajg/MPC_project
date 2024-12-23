@@ -15,31 +15,31 @@ mpc_lat = MpcControl_lat(sys_lat, Ts, H_lat);
 mpc = car.merge_lin_controllers(mpc_lon, mpc_lat);
 
 
-ref = [0 100/3.6]'; % (y_ref, V_ref)
+ref = [0 120/3.6]'; % (y_ref, V_ref)
 
 %% test 1
-% otherRef = 100 / 3.6;
-% params = {};
-% params.Tf = 25;
-% params.myCar.model = car;
-% params.myCar.x0 = [0 0 0 80/3.6]'; %(x, y, theta, V)
-% params.myCar.u = @mpc.get_u;
-% params.myCar.ref = ref;
-% params.otherCar.model = car;
-% params.otherCar.x0 = [15 0 0 otherRef]'; %otherRef 
-% params.otherCar.u = car.u_const(otherRef);
-
-%% test 2
+otherRef = 100 / 3.6;
 params = {};
 params.Tf = 25;
 params.myCar.model = car;
-params.myCar.x0 = [0 0 0 115/3.6]';
+params.myCar.x0 = [0 0 0 100/3.6]'; %(x, y, theta, V)
 params.myCar.u = @mpc.get_u;
 params.myCar.ref = ref;
 params.otherCar.model = car;
-params.otherCar.x0 = [8 0 0 120/3.6]';
-params.otherCar.u = car.u_fwd_ref();
-params.otherCar.ref = car.ref_robust();
+params.otherCar.x0 = [15 0 0 otherRef]'; %otherRef 
+params.otherCar.u = car.u_const(otherRef);
+
+%% test 2
+% params = {};
+% params.Tf = 25;
+% params.myCar.model = car;
+% params.myCar.x0 = [0 0 0 115/3.6]';
+% params.myCar.u = @mpc.get_u;
+% params.myCar.ref = ref;
+% params.otherCar.model = car;
+% params.otherCar.x0 = [8 0 0 120/3.6]';
+% params.otherCar.u = car.u_fwd_ref();
+% params.otherCar.ref = car.ref_robust();
 
 %% simulation
 result = simulate(params);
