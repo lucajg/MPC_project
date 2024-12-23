@@ -48,9 +48,7 @@ classdef MpcControl_lat < MpcControlBase
 
             
             % Weights for the cost function
-            % Assume we primarily care about velocity tracking and input usage
-            % Q = diag([0.01,1]) ;   
-            % R = 0.01;             
+            % Assume we primarily care about velocity tracking and input usage            
             Q = diag([0.001385, 1]);
             R = 0.1;  
 
@@ -94,7 +92,6 @@ classdef MpcControl_lat < MpcControlBase
             Fcl = [Fx; Fu*K];
             fcl = [fx; fu  ];
             
-           
             % Compute the invariant set:
             Xf = polytope(Fcl,fcl);
             while 1
@@ -108,17 +105,6 @@ classdef MpcControl_lat < MpcControlBase
             end
             [Ff,ff] = double(Xf);
 
-            % Plot
-            figure;
-            hold on;
-            plot(polytope(Fx,fx),'g');
-            plot(polytope(Ff,ff),'r');
-            title('Maximal invariant set for lateral subsystem');
-            scatter([0,3],[0,0]);
-            xlabel('y');
-            ylabel('\theta');
-            grid on;
-            hold off;
             %% Set up the MPC cost and constraints using the computed set-point
             
             % Initial condition
@@ -131,9 +117,7 @@ classdef MpcControl_lat < MpcControlBase
                 con = con + (Fx*(X(:,k) + xs) <= fx);
                 con = con + (Fu*(U(:,k) + us) <= fu);
                 % Cost accumulation: 
-                % Track position y X(1) to x_ref(1), 
-                % angle theta X(2) to x_ref(2) 
-                % and input U(k) to u_ref
+                % Track position X to x_ref and input U(k) to u_ref
                 x_err = X(:,k) - (x_ref-xs);           % Error in state
                 u_err = U(:,k) - (u_ref-us);           % Error in input
                 obj = obj + x_err'*Q*x_err + u_err'*R*u_err;
@@ -143,16 +127,13 @@ classdef MpcControl_lat < MpcControlBase
             x_err_terminal = X(:,N) - (x_ref-xs);
             obj = obj + x_err_terminal'*Qf*x_err_terminal;
             
-            % terminal constraint
-            con = con + (Ff*(X(:,N) + xs - x_ref) <= ff);
+            % Terminal constraint offset (the constraint is with respect to
+            % the reference)
+            con = con + (Ff*( (X(:,N) + xs) - x_ref ) <= ff);
 
-            % Replace this line and set u0 to be the input that you
-            % want applied to the system. Note that u0 is applied directly
-            % to the nonlinear system. You need to take care of any 
-            % offsets resulting from the linearization.
-            % If you want to use the delta formulation make sure to
-            % substract mpc.xs/mpc.us accordingly.
-            con = con + (u0 == U(:,1)+us); % set u0 to be the first input
+            % Input applied to the system with correction for delta
+            % dynamics:
+            con = con + (u0 == U(:,1) + us); 
 
             % Pass here YALMIP sdpvars which you want to debug. You can
             % then access them when calling your mpc controller like
@@ -190,20 +171,19 @@ classdef MpcControl_lat < MpcControlBase
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             
-            % The y state has to be equal to the reference and theta must
-            % be 0 at steady state
+            % Compute the steady state thanks to the reference value using
+            % the system of equations shown in slide 6-43 of the lectures
             C = [1 0];
             sizeC =  size(C);
             ny = sizeC(1);
             sizeB = size(B);
             nu = sizeB(2);
-            nx = sizeB(1);
+
             aug_mat = [eye(size(A))-A,         - B
                                     C,  zeros(ny,nu)];
-            r = [-A*xs - B*us + xs ; ref];
-            xu = aug_mat\r;
+            r      = [-A*xs - B*us + xs ; ref];
+            xu     = aug_mat\r;
             xs_ref = [xu(1); xu(2)];
-            % we want the input delta to be 0 at steady state
             us_ref = xu(3);
             
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
