@@ -5,7 +5,7 @@ sys = car.linearize(xs, us);
 
 %% system decomposition
 [sys_lon, sys_lat] = car.decompose(sys);
-tube_mpc_sets(sys_lon, Ts)
+%tube_mpc_sets(sys_lon, Ts);
 
 % Design MPC controller
 H_lon = 25; % Horizon length in seconds
@@ -14,6 +14,7 @@ mpc_lon = MpcControl_lon(sys_lon, Ts, H_lon);
 mpc_lat = MpcControl_lat(sys_lat, Ts, H_lat);
 mpc = car.merge_lin_controllers(mpc_lon, mpc_lat);
 
+plots();
 
 ref = [0 120/3.6]'; % (y_ref, V_ref)
 
