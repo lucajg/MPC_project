@@ -32,8 +32,6 @@ classdef NmpcControl < handle
         function obj = NmpcControl(car, H)
 
             import casadi.*
-            
-
 
             N_segs = ceil(H/car.Ts); % Horizon steps
             N = N_segs + 1;          % Last index in 1-based Matlab indexing
@@ -66,8 +64,6 @@ classdef NmpcControl < handle
             theta_0 = obj.x0(3) ;  
             v_0 = obj.x0(4); 
 
-
-
             pos_x   = X(1,:);
             pos_y = X(2,:);
             theta = X(3,:);
@@ -85,28 +81,18 @@ classdef NmpcControl < handle
             y_err = pos_y - obj.ref(1)*ones(1,N+1);
             cost = 10*(V_err*V_err')  + ... 
                 10*(y_err*y_err') + ... 
-                0.1*(theta*theta')   + ... 
-                0.1 * U(1, :)*U(1, :)'; 
+                10*(steering*steering')   + ... 
+                10 * U(1, :)*U(1, :)'; 
             
-            
-
-            %opti.subject_to(X(:,1)==obj.x0);
-
             for k=1:N % loop over control intervals
                 opti.subject_to(X(:,k+1) == f_discrete(X(:,k), U(:,k)));
             end
-
-            
 
             opti.subject_to(-1 <= throttle <= 1); 
             opti.subject_to(-0.5 <= pos_y <= 3.5); 
             opti.subject_to(-0.0873 <= theta <= 0.0873);
             opti.subject_to(-0.5236 <= steering <= 0.5236);  
-
-           
-            
-            
-            % change this line accordingly
+    
             opti.subject_to( obj.u0 == U(:,1) );
 
             opti.minimize(cost);

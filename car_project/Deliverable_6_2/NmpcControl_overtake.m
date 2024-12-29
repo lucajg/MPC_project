@@ -61,20 +61,21 @@ classdef NmpcControl_overtake < handle
             
             X = opti.variable(nx,N+1); % state trajectory variables
             X_other = opti.variable(nx, N+1);
+           
+
             U = opti.variable(nu,N);   % control trajectory (throttle, brake)
             A = [1 0 0 car.Ts
                  0 1 0 0
                  0 0 1 0
                  0 0 0 1];
 
-            H = [3 0
-                 0 0.8];
+            H = [0.005 0
+                 0 0.11];
+
             pos_x0 = obj.x0(1);
             pos_y0 = obj.x0(2);
             theta_0 = obj.x0(3) ;  
             v_0 = obj.x0(4); 
-
-
 
             pos_x   = X(1,:);
             pos_y = X(2,:);
@@ -93,13 +94,11 @@ classdef NmpcControl_overtake < handle
             y_err = pos_y - obj.ref(1)*ones(1,N+1);
             
             cost = 10*(V_err*V_err')  + ... 
-                10*(y_err*y_err') + ... 
-                1*(theta*theta')   + ... 
-                0.1 * U(1, :)*U(1, :)'; 
-            
-            
-
-            %opti.subject_to(X(:,1)==obj.x0);
+                1*(y_err*y_err') + ... 
+                10 * U(2, :)*U(2, :)'  + ...  
+                10 * (theta)*(theta)'  + ...  
+                10 * U(1, :)*U(1, :)'; 
+           
             opti.subject_to(X_other(:,1)==obj.x0other);
             
             p = [X(1,:); X(2,:)];
@@ -111,17 +110,11 @@ classdef NmpcControl_overtake < handle
                 opti.subject_to(((p(:,k)-pL(:,k))'*H*(p(:,k)-pL(:,k)))>=1);
             end
             
-            
-
             opti.subject_to(-1 <= throttle <= 1); 
             opti.subject_to(-0.5 <= pos_y <= 3.5); 
             opti.subject_to(-0.0873 <= theta <= 0.0873);
             opti.subject_to(-0.5236 <= steering <= 0.5236);  
 
-           
-            
-            
-            % change this line accordingly
             opti.subject_to( obj.u0 == U(:,1) );
 
             opti.minimize(cost);
@@ -137,6 +130,7 @@ classdef NmpcControl_overtake < handle
             options.ipopt.print_level = 0;
             options.print_time = 0;
             options.expand = true;
+            %options.ipopt.max_iter = 10000000000;
             obj.opti.solver('ipopt', options);
         end
 
