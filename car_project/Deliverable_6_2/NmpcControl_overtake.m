@@ -69,7 +69,7 @@ classdef NmpcControl_overtake < handle
                  0 0 1 0
                  0 0 0 1];
 
-            H = [0.005 0
+            H = [0.020 0
                  0 0.11];
 
             pos_x0 = obj.x0(1);

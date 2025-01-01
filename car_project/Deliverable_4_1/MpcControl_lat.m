@@ -45,38 +45,35 @@ classdef MpcControl_lat < MpcControlBase
             % Decision variables over the horizon
             X = sdpvar(nx, N);
             U = sdpvar(nu, N-1);
-
-            % Q = eye(2);
-            % R = eye(1);
-            % Weights for the cost function
-            % Assume we primarily care about velocity tracking and input usage
-            % Q = diag([0.01,1]) ;   
-            % R = 0.01;             
-            Q = diag([0.001385, 1]);
-            R = 0.1;  
+            
+            Q = diag([1, 1]);
+            R = 1;  
 
             % Linearization points
             xs = mpc.xs;
             us = mpc.us;
        
-            % Input constraits
-
+            % State constraits
             ymin = -0.5;
             ymax =  3.5;
-
+            
             thetamin = -deg2rad(5);
             thetamax =  deg2rad(5);
-
+            
+            % Input constraits
             deltamin =  -deg2rad(30);
             deltamax =   deg2rad(30);
 
             %% Compute maximal invariant set
-          
+            
+            % Compute dlqr controller
             [K,Qf,~] = dlqr(mpc.A,mpc.B,Q,R);
             K = -K;
            
+            % Compute closed loop matrix
             A_cl = mpc.A + mpc.B*K;
             
+            % State constraints
             Fx = [ 1  0
                   -1  0
                    0  1
@@ -86,6 +83,7 @@ classdef MpcControl_lat < MpcControlBase
                    thetamax
                   -thetamin];
             
+            % Input constraints
             Fu = [ 1
                   -1];
             fu = [ deltamax
@@ -95,7 +93,6 @@ classdef MpcControl_lat < MpcControlBase
             F_cl = [Fx; Fu*K];
             f_cl = [fx; fu  ];
             
-           
             % Compute the invariant set:
             Xf = polytope(F_cl,f_cl);
             while 1
@@ -108,23 +105,22 @@ classdef MpcControl_lat < MpcControlBase
                 end
             end
             [Ff,ff] = double(Xf);
-
-            %ff-Ff*[3;0];
             
             % Plot
             figure(3);
             hold on;
-            
-            plot(polytope(Fx,fx),'g');
-            plot(polytope(Ff,ff),'r');
+            plot(polytope(Fx, fx), 'r');
+            plot(polytope(Ff, ff), 'g');
             title('Maximal invariant set for lateral subsystem');
-            scatter([0,3],[0,0]);
             xlabel('y');
             ylabel('\theta');
+            legend('Initial state constraint set', 'Terminal invariant set', 'Location', 'best');
             grid on;
             hold off;
-            %% Set up the MPC cost and constraints using the computed set-point
             
+            %% Set up the MPC cost and constraints using the computed set-point
+            % Delta formulation was used
+
             % Initial condition
             con = con + (X(:,1) == x0 - xs);
 
@@ -207,7 +203,6 @@ classdef MpcControl_lat < MpcControlBase
             r = [-A*xs - B*us + xs ; ref];
             xu = aug_mat\r;
             xs_ref = [xu(1); xu(2)];
-            % we want the input delta to be 0 at steady state
             us_ref = xu(3);
             
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE

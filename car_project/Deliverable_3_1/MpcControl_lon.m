@@ -141,16 +141,12 @@ classdef MpcControl_lon < MpcControlBase
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             
             % We want to find us_ref such that V = ref is an equilibrium:
-            %
-            % At steady state: Vs_ref = A(Vs_ref - xs) + B(us_ref - us) + xs
-            %
-            % Rearrange:
-            % Vs_ref - xs = A(Vs_ref - xs) + B(us_ref - us)
-            % (I - A)(Vs_ref - xs) = B(us_ref - us)
-            % us_ref = us + ( (1 - A)/B )*( Vs_ref - xs )
-            
-            Vs_ref = ref;
-            us_ref = us + ((1 - A)/B)*(Vs_ref - xs);
+            C = 1;
+            aug_mat = [1-A, -B
+                         C, 0];
+            xu = aug_mat\[-A*xs-B*us+xs; ref];
+            Vs_ref = xu(1);
+            us_ref = xu(2); 
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end
