@@ -43,6 +43,7 @@ classdef MpcControl_lat < MpcControlBase
             con = [];
 
             % Decision variables over the horizon
+            % Here, the delta formulation is used
             X = sdpvar(nx, N);
             U = sdpvar(nu, N-1);
             
@@ -105,18 +106,6 @@ classdef MpcControl_lat < MpcControlBase
                 end
             end
             [Ff,ff] = double(Xf);
-            
-            % Plot
-            figure(3);
-            hold on;
-            plot(polytope(Fx, fx), 'r');
-            plot(polytope(Ff, ff), 'g');
-            title('Maximal invariant set for lateral subsystem');
-            xlabel('y');
-            ylabel('\theta');
-            legend('Initial state constraint set', 'Terminal invariant set', 'Location', 'best');
-            grid on;
-            hold off;
             
             %% Set up the MPC cost and constraints using the computed set-point
             % Delta formulation was used

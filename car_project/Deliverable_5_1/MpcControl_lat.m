@@ -43,37 +43,38 @@ classdef MpcControl_lat < MpcControlBase
             con = [];
 
             % Decision variables over the horizon
+            % Here, the delta formulation is used
             X = sdpvar(nx, N);
             U = sdpvar(nu, N-1);
-
             
-            % Weights for the cost function
-            % Assume we primarily care about velocity tracking and input usage            
-            Q = diag([0.001385, 1]);
-            R = 0.1;  
+            Q = diag([1, 1]);
+            R = 1;  
 
             % Linearization points
             xs = mpc.xs;
             us = mpc.us;
        
-            % Input constraits
-
+            % State constraits
             ymin = -0.5;
             ymax =  3.5;
             
+            thetamin = -deg2rad(5);
             thetamax =  deg2rad(5);
-            thetamin =  -thetamax;
             
+            % Input constraits
+            deltamin =  -deg2rad(30);
             deltamax =   deg2rad(30);
-            deltamin =     -deltamax;
-            
+
             %% Compute maximal invariant set
-          
+            
+            % Compute dlqr controller
             [K,Qf,~] = dlqr(mpc.A,mpc.B,Q,R);
             K = -K;
            
-            Acl = mpc.A + mpc.B*K;
+            % Compute closed loop matrix
+            A_cl = mpc.A + mpc.B*K;
             
+            % State constraints
             Fx = [ 1  0
                   -1  0
                    0  1
@@ -83,30 +84,32 @@ classdef MpcControl_lat < MpcControlBase
                    thetamax
                   -thetamin];
             
+            % Input constraints
             Fu = [ 1
                   -1];
             fu = [ deltamax
                   -deltamin];
             
             % Combine constraints for closed-loop system
-            Fcl = [Fx; Fu*K];
-            fcl = [fx; fu  ];
+            F_cl = [Fx; Fu*K];
+            f_cl = [fx; fu  ];
             
             % Compute the invariant set:
-            Xf = polytope(Fcl,fcl);
+            Xf = polytope(F_cl,f_cl);
             while 1
                 prevXf = Xf;
                 [T,t] = double(Xf);
-                presetXf = polytope(T*Acl,t);
+                presetXf = polytope(T*A_cl,t);
                 Xf = intersect(Xf, presetXf);
                 if isequal(prevXf, Xf)
                     break
                 end
             end
             [Ff,ff] = double(Xf);
-
-            %% Set up the MPC cost and constraints using the computed set-point
             
+            %% Set up the MPC cost and constraints using the computed set-point
+            % Delta formulation was used
+
             % Initial condition
             con = con + (X(:,1) == x0 - xs);
 
@@ -117,7 +120,9 @@ classdef MpcControl_lat < MpcControlBase
                 con = con + (Fx*(X(:,k) + xs) <= fx);
                 con = con + (Fu*(U(:,k) + us) <= fu);
                 % Cost accumulation: 
-                % Track position X to x_ref and input U(k) to u_ref
+                % Track position y X(1) to x_ref(1), 
+                % angle theta X(2) to x_ref(2) 
+                % and input U(k) to u_ref
                 x_err = X(:,k) - (x_ref-xs);           % Error in state
                 u_err = U(:,k) - (u_ref-us);           % Error in input
                 obj = obj + x_err'*Q*x_err + u_err'*R*u_err;
@@ -127,13 +132,16 @@ classdef MpcControl_lat < MpcControlBase
             x_err_terminal = X(:,N) - (x_ref-xs);
             obj = obj + x_err_terminal'*Qf*x_err_terminal;
             
-            % Terminal constraint offset (the constraint is with respect to
-            % the reference)
-            con = con + (Ff*( (X(:,N) + xs) - x_ref ) <= ff);
+            % terminal constraint
+            con = con + (Ff*(X(:,N) + xs - x_ref) <= ff);
 
-            % Input applied to the system with correction for delta
-            % dynamics:
-            con = con + (u0 == U(:,1) + us); 
+            % Replace this line and set u0 to be the input that you
+            % want applied to the system. Note that u0 is applied directly
+            % to the nonlinear system. You need to take care of any 
+            % offsets resulting from the linearization.
+            % If you want to use the delta formulation make sure to
+            % substract mpc.xs/mpc.us accordingly.
+            con = con + (u0 == U(:,1)+us); % set u0 to be the first input
 
             % Pass here YALMIP sdpvars which you want to debug. You can
             % then access them when calling your mpc controller like
@@ -171,18 +179,18 @@ classdef MpcControl_lat < MpcControlBase
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             
-            % Compute the steady state thanks to the reference value using
-            % the system of equations shown in slide 6-43 of the lectures
+            % The y state has to be equal to the reference and theta must
+            % be 0 at steady state
             C = [1 0];
             sizeC =  size(C);
             ny = sizeC(1);
             sizeB = size(B);
             nu = sizeB(2);
-
+            nx = sizeB(1);
             aug_mat = [eye(size(A))-A,         - B
                                     C,  zeros(ny,nu)];
-            r      = [-A*xs - B*us + xs ; ref];
-            xu     = aug_mat\r;
+            r = [-A*xs - B*us + xs ; ref];
+            xu = aug_mat\r;
             xs_ref = [xu(1); xu(2)];
             us_ref = xu(3);
             

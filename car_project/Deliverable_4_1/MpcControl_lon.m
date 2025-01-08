@@ -46,7 +46,8 @@ classdef MpcControl_lon < MpcControlBase
             obj = 0;
             con = [];
 
-            % Decision variables over the horizon
+            % Decision variables over the horizon 
+            % Here, we use the delta formulation
             X = sdpvar(nx, N);
             U = sdpvar(nu, N);
 
@@ -80,7 +81,7 @@ classdef MpcControl_lon < MpcControlBase
                 % Cost accumulation: 
                 % Track velocity (X(2,k)) to V_ref and input U(k) to u_ref
                 x_err = X(:,k) - ([xs(1); V_ref] - xs);  % Error in state
-                u_err = U(:,k) - (u_ref-us);% - d_est;           % Error in input
+                u_err = U(:,k) - (u_ref-us);%          % Error in input
                 obj = obj + x_err'*Q*x_err + u_err'*R*u_err;
             end
             
@@ -153,7 +154,6 @@ classdef MpcControl_lon < MpcControlBase
             xu = aug_mat\r;
 
             Vs_ref = xu(1);
-            
             us_ref = xu(2);
 
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE

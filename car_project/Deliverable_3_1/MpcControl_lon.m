@@ -47,6 +47,7 @@ classdef MpcControl_lon < MpcControlBase
             con = [];
 
             % Decision variables over the horizon
+            % Here, we do *not* use the delta formulation
             X = sdpvar(nx, N);
             U = sdpvar(nu, N-1);
 
@@ -70,6 +71,7 @@ classdef MpcControl_lon < MpcControlBase
             
             % Initial condition
             con = con + (X(:,1) == x0);
+            
 
             % Build the prediction model over the horizon
             for k = 1:N-1

@@ -1,3 +1,4 @@
+
 classdef MpcControl_lat < MpcControlBase
     
     methods
@@ -43,6 +44,7 @@ classdef MpcControl_lat < MpcControlBase
             con = [];
 
             % Decision variables over the horizon
+            % Here, the delta formulation is used
             X = sdpvar(nx, N);
             U = sdpvar(nu, N-1);
             
@@ -189,7 +191,9 @@ classdef MpcControl_lat < MpcControlBase
 
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
-
+            
+            % The y state has to be equal to the reference and theta must
+            % be 0 at steady state
             C = [1 0];
             sizeC =  size(C);
             ny = sizeC(1);
@@ -202,7 +206,6 @@ classdef MpcControl_lat < MpcControlBase
             xu = aug_mat\r;
             xs_ref = [xu(1); xu(2)];
             us_ref = xu(3);
-            
             
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
