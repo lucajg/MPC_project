@@ -69,8 +69,8 @@ classdef NmpcControl < handle
             theta = X(3,:);
             speed = X(4,:);
 
-            throttle = U(2,:);
             steering = U(1,:);
+            throttle = U(2,:);
 
             opti.subject_to(pos_x(1)==pos_x0);   % use initial position
             opti.subject_to(pos_y(1)==pos_y0);   % use initial position
@@ -79,10 +79,11 @@ classdef NmpcControl < handle
 
             V_err = speed - obj.ref(2)*ones(1,N+1);
             y_err = pos_y - obj.ref(1)*ones(1,N+1);
-            cost = 10*(V_err*V_err')  + ... 
-                10*(y_err*y_err') + ... 
-                10*(steering*steering')   + ... 
-                10 * U(1, :)*U(1, :)'; 
+            cost = 1*(V_err*V_err')  + ... 
+                1*(y_err*y_err') + ... 
+                100*(steering*steering')   + ... 
+                2*(throttle*throttle') + ...
+                100*(theta*theta');  
             
             for k=1:N % loop over control intervals
                 opti.subject_to(X(:,k+1) == f_discrete(X(:,k), U(:,k)));
@@ -90,8 +91,8 @@ classdef NmpcControl < handle
 
             opti.subject_to(-1 <= throttle <= 1); 
             opti.subject_to(-0.5 <= pos_y <= 3.5); 
-            opti.subject_to(-0.0873 <= theta <= 0.0873);
-            opti.subject_to(-0.5236 <= steering <= 0.5236);  
+            opti.subject_to(-deg2rad(5) <= theta <= deg2rad(5));
+            opti.subject_to(-deg2rad(30) <= steering <= deg2rad(30));  
     
             opti.subject_to( obj.u0 == U(:,1) );
 

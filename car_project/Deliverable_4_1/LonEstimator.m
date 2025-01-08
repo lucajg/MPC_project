@@ -19,10 +19,6 @@ classdef LonEstimator
             
             % Discretize the system and extract the A,B,C,D matrices
             [~, Ad, Bd, Cd, ~] = Car.c2d_with_offset(sys, Ts);
-
-            Ad
-
-            Bd
             
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
@@ -61,7 +57,7 @@ classdef LonEstimator
             
             % Estimation equation
             z_hat_next =  est.xs_hat + est.A_hat*(z_hat - est.xs_hat) + est.B_hat*(u - est.us_hat) + est.L*(est.C_hat*(z_hat) - y);
-            
+
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
             %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         end

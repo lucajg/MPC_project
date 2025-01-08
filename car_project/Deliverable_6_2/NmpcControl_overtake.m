@@ -58,7 +58,8 @@ classdef NmpcControl_overtake < handle
             % YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE YOUR CODE HERE
 
             % Define your problem using the opti object created above
-            
+
+
             X = opti.variable(nx,N+1); % state trajectory variables
             X_other = opti.variable(nx, N+1);
            
@@ -69,7 +70,7 @@ classdef NmpcControl_overtake < handle
                  0 0 1 0
                  0 0 0 1];
 
-            H = [0.020 0
+            H = [0.005 0
                  0 0.11];
 
             pos_x0 = obj.x0(1);
@@ -81,6 +82,9 @@ classdef NmpcControl_overtake < handle
             pos_y = X(2,:);
             theta = X(3,:);
             speed = X(4,:);
+
+            theta_max =  deg2rad(5);
+            theta_min = -theta_max;
 
             throttle = U(2,:);
             steering = U(1,:);
@@ -95,9 +99,9 @@ classdef NmpcControl_overtake < handle
             
             cost = 10*(V_err*V_err')  + ... 
                 1*(y_err*y_err') + ... 
-                10 * U(2, :)*U(2, :)'  + ...  
+                10 * (throttle*throttle')  + ...  
                 10 * (theta)*(theta)'  + ...  
-                10 * U(1, :)*U(1, :)'; 
+                10 * (steering*steering'); 
            
             opti.subject_to(X_other(:,1)==obj.x0other);
             
@@ -112,7 +116,7 @@ classdef NmpcControl_overtake < handle
             
             opti.subject_to(-1 <= throttle <= 1); 
             opti.subject_to(-0.5 <= pos_y <= 3.5); 
-            opti.subject_to(-0.0873 <= theta <= 0.0873);
+            opti.subject_to(-0.0872 <= theta <= 0.0872);
             opti.subject_to(-0.5236 <= steering <= 0.5236);  
 
             opti.subject_to( obj.u0 == U(:,1) );
