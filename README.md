@@ -4,6 +4,7 @@ This project implements and simulates various Model Predictive Controllers (MPC)
 
  
  **Required software:**
+  - MATLAB
   - yalmip
   - MPT3
   - CasADi
